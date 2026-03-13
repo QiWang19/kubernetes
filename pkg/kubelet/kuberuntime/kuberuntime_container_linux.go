@@ -160,7 +160,8 @@ func (m *kubeGenericRuntimeManager) generateLinuxContainerResources(ctx context.
 
 		// Guaranteed pods by their QoS definition requires that memory request equals memory limit and cpu request must equal cpu limit.
 		// Here, we only check from memory perspective. Hence MemoryQoS feature is disabled on those QoS pods by not setting memory.high.
-		if memoryRequest != memoryLimit {
+		// BestEffort pods have both memory request and memory limit equal to 0, set memory.high that derived from node allocatable memory.
+		if memoryRequest != memoryLimit || memoryLimit == 0 {
 			// The formula for memory.high for container cgroup is modified in Alpha stage of the feature in K8s v1.27.
 			// It will be set based on formula:
 			// `memory.high=floor[(requests.memory + memory throttling factor * (limits.memory or node allocatable memory - requests.memory))/pageSize] * pageSize`

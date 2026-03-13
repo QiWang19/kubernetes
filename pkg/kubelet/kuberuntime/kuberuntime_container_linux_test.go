@@ -478,6 +478,25 @@ func TestGenerateContainerConfigWithMemoryQoSEnforced(t *testing.T) {
 			},
 		},
 	}
+
+	pod3 := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			UID:       "87654321",
+			Name:      "besteffort",
+			Namespace: "new",
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:            "foo",
+					Image:           "busybox",
+					ImagePullPolicy: v1.PullIfNotPresent,
+					Command:         []string{"testCommand"},
+					WorkingDir:      "testWorkingDir",
+				},
+			},
+		},
+	}
 	pageSize := int64(os.Getpagesize())
 	memoryNodeAllocatable := resource.MustParse(fakeNodeAllocatableMemory)
 	pod1MemoryHigh := int64(math.Floor(
@@ -486,14 +505,17 @@ func TestGenerateContainerConfigWithMemoryQoSEnforced(t *testing.T) {
 	pod2MemoryHigh := int64(math.Floor(
 		float64(podRequestMemory.Value())+
 			(float64(memoryNodeAllocatable.Value())-float64(podRequestMemory.Value()))*float64(m.memoryThrottlingFactor))/float64(pageSize)) * pageSize
+	pod3MemoryHigh := int64(math.Floor(
+		float64(memoryNodeAllocatable.Value())*float64(m.memoryThrottlingFactor))/float64(pageSize)) * pageSize
 
 	type expectedResult struct {
 		containerConfig *runtimeapi.LinuxContainerConfig
-		memoryLow       int64
-		memoryHigh      int64
+		memoryMin       string
+		memoryHigh      string
 	}
 	l1, _ := m.generateLinuxContainerConfig(tCtx, &pod1.Spec.Containers[0], pod1, new(int64), "", nil, true)
 	l2, _ := m.generateLinuxContainerConfig(tCtx, &pod2.Spec.Containers[0], pod2, new(int64), "", nil, true)
+	l3, _ := m.generateLinuxContainerConfig(tCtx, &pod3.Spec.Containers[0], pod3, new(int64), "", nil, true)
 	tests := []struct {
 		name     string
 		pod      *v1.Pod
@@ -504,8 +526,8 @@ func TestGenerateContainerConfigWithMemoryQoSEnforced(t *testing.T) {
 			pod:  pod1,
 			expected: &expectedResult{
 				l1,
-				128 * 1024 * 1024,
-				int64(pod1MemoryHigh),
+				strconv.FormatInt(128*1024*1024, 10),
+				strconv.FormatInt(pod1MemoryHigh, 10),
 			},
 		},
 		{
@@ -513,8 +535,17 @@ func TestGenerateContainerConfigWithMemoryQoSEnforced(t *testing.T) {
 			pod:  pod2,
 			expected: &expectedResult{
 				l2,
-				128 * 1024 * 1024,
-				int64(pod2MemoryHigh),
+				strconv.FormatInt(128*1024*1024, 10),
+				strconv.FormatInt(pod2MemoryHigh, 10),
+			},
+		},
+		{
+			name: "BestEffortWithoutRequestOrLimit",
+			pod:  pod3,
+			expected: &expectedResult{
+				l3,
+				"",
+				strconv.FormatInt(pod3MemoryHigh, 10),
 			},
 		},
 	}
@@ -523,8 +554,8 @@ func TestGenerateContainerConfigWithMemoryQoSEnforced(t *testing.T) {
 		linuxConfig, err := m.generateLinuxContainerConfig(tCtx, &test.pod.Spec.Containers[0], test.pod, new(int64), "", nil, true)
 		assert.NoError(t, err)
 		assert.Equal(t, test.expected.containerConfig, linuxConfig, test.name)
-		assert.Equal(t, linuxConfig.GetResources().GetUnified()["memory.min"], strconv.FormatInt(test.expected.memoryLow, 10), test.name)
-		assert.Equal(t, linuxConfig.GetResources().GetUnified()["memory.high"], strconv.FormatInt(test.expected.memoryHigh, 10), test.name)
+		assert.Equal(t, test.expected.memoryMin, linuxConfig.GetResources().GetUnified()["memory.min"], test.name)
+		assert.Equal(t, test.expected.memoryHigh, linuxConfig.GetResources().GetUnified()["memory.high"], test.name)
 	}
 }
 
