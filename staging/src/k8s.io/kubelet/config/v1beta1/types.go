@@ -106,10 +106,10 @@ const (
 type MemoryReservationPolicy string
 
 const (
-	// NoneMemoryReservationPolicy disables memory.min protection for containers and pods.
-	// This is the default to maintain node stability by preventing "locked" memory.
+	// NoneMemoryReservationPolicy disables memory reservation protection for containers and pods.
+	// This is the default to maintain node stability by avoiding hard memory reservations.
 	NoneMemoryReservationPolicy MemoryReservationPolicy = "None"
-	// HardReservationMemoryReservationPolicy enables memory.min for containers and pods.
+	// HardReservationMemoryReservationPolicy enables memory reservation protection for containers and pods.
 	HardReservationMemoryReservationPolicy MemoryReservationPolicy = "HardReservation"
 )
 
@@ -900,10 +900,9 @@ type KubeletConfiguration struct {
 	// +optional
 	MemoryThrottlingFactor *float64 `json:"memoryThrottlingFactor,omitempty"`
 	// MemoryReservationPolicy controls how the kubelet applies cgroup v2 memory protection.
-	// "None" (default): The kubelet does not set memory.min for containers and pods,
-	// ensuring no hard memory is locked by the kernel.
-	// "HardReservation": The kubelet sets the cgroup v2 memory.min value based on pod and container memory requests.
-	// This ensures the requested memory is never reclaimed by the kernel, but may trigger an OOM if the reservation cannot be satisfied.
+	// "None" (default): The kubelet does not apply memory reservation protection for containers and pods.
+	// "HardReservation": The kubelet applies memory reservation protection based on pod and container memory requests.
+	// Depending on QoS class and cgroup hierarchy, this may use different cgroup v2 memory protection controls.
 	// See https://kep.k8s.io/2570 for more details.
 	// Default: None
 	// +featureGate=MemoryQoS

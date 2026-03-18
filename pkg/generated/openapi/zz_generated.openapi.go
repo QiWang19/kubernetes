@@ -72000,7 +72000,7 @@ func schema_k8sio_kubelet_config_v1beta1_KubeletConfiguration(ref common.Referen
 					},
 					"memoryReservationPolicy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MemoryReservationPolicy controls how the kubelet applies cgroup v2 memory protection. \"None\" (default): The kubelet does not set memory.min for containers and pods, ensuring no hard memory is locked by the kernel. \"HardReservation\": The kubelet sets the cgroup v2 memory.min value based on pod and container memory requests. This ensures the requested memory is never reclaimed by the kernel, but may trigger an OOM if the reservation cannot be satisfied. See https://kep.k8s.io/2570 for more details. Default: None",
+							Description: "MemoryReservationPolicy controls how the kubelet applies cgroup v2 memory protection. \"None\" (default): The kubelet does not apply memory reservation protection for containers and pods. \"HardReservation\": The kubelet applies memory reservation protection based on pod and container memory requests. Depending on QoS class and cgroup hierarchy, this may use different cgroup v2 memory protection controls. See https://kep.k8s.io/2570 for more details. Default: None",
 							Type:        []string{"string"},
 							Format:      "",
 						},
